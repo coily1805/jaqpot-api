@@ -62,7 +62,22 @@ public class Parameter extends JaqpotEntity {
         MANDATORY;
     };
 
+    /**
+     *
+     *
+     *
+     */
+    public enum ValueType {
 
+        STRING,
+        INTEGER,
+        DOUBLE,
+        STRING_ARRAY,
+        INTEGER_ARRAY,
+        DOUBLE_ARRAY,
+        VALID_JSON_DESCRIBED
+
+    }
 
     /**
      * Name of the parameter.
@@ -88,6 +103,9 @@ public class Parameter extends JaqpotEntity {
 
     private String description;
 
+    private ValueType valueType;
+    
+    
     public Parameter() {
     }
 
@@ -174,4 +192,12 @@ public class Parameter extends JaqpotEntity {
         this.description = description;
     }
 
+    public ValueType getValueType() {
+        return valueType;
+    }
+
+    public void setValueType(ValueType valueType) {
+        this.valueType = valueType;
+    }
+    
 }

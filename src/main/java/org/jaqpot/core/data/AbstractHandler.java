@@ -39,7 +39,6 @@ import java.util.Map;
 import org.jaqpot.core.db.entitymanager.JaqpotEntityManager;
 import org.jaqpot.core.model.JaqpotEntity;
 
-
 /**
  *
  * @author Pantelis Sopasakis
@@ -47,7 +46,7 @@ import org.jaqpot.core.model.JaqpotEntity;
  * @param <T> Entity Type to be handled by the Handler.
  *
  */
-public abstract class AbstractHandler<T extends JaqpotEntity>  {
+public abstract class AbstractHandler<T extends JaqpotEntity> {
 
     private final Class<T> entityClass;
 
@@ -80,8 +79,7 @@ public abstract class AbstractHandler<T extends JaqpotEntity>  {
         return getEntityManager().find(entityClass, id, fields);
     }
 
-    public T findMeta(Object id)
-    {
+    public T findMeta(Object id) {
         List<String> fields = new ArrayList<>();
         fields.add("totalColumns");
         fields.add("totalRows");

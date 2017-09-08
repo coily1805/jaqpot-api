@@ -36,13 +36,17 @@ package org.jaqpot.core.data;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 import org.jaqpot.core.annotations.MongoDB;
 import org.jaqpot.core.db.entitymanager.JaqpotEntityManager;
 import org.jaqpot.core.model.Algorithm;
+import org.jaqpot.core.model.Parameter;
 
 /**
  *
@@ -84,8 +88,55 @@ public class AlgorithmHandler extends AbstractHandler<Algorithm> {
         List<String> classes = new ArrayList<>();
         classes.add(className);
         properties.put("ontologicalClasses", classes);
-
         return em.count(Algorithm.class, properties);
     }
 
+    public Algorithm findAndAddParameterType(Object primaryKey) {
+        Algorithm algo = em.find(Algorithm.class, primaryKey);
+        Optional<Set<Parameter>> parameters = Optional.of(algo).map(Algorithm::getParameters);
+        parameters.ifPresent(ParameterSet -> {
+            Set<Parameter> paramUpdates = new HashSet<>();
+            ParameterSet.forEach((p) -> {
+                if (p.getValueType() == null) {
+                    p.setValueType(Parameter.ValueType.VALID_JSON_DESCRIBED);
+                    if (p.getValue().getClass().getSimpleName().equals("ArrayList")) {
+                        ArrayList<Object> check = new ArrayList();
+                        check.add(p.getValue());
+                        ArrayList<Object> value = (ArrayList) check.get(0);
+                        String valueType = value.get(0).getClass().getSimpleName();
+                        switch (valueType) {
+                            case ("Integer"):
+                                p.setValueType(Parameter.ValueType.INTEGER_ARRAY);
+                                break;
+                            case ("Double"):
+                                p.setValueType(Parameter.ValueType.DOUBLE_ARRAY);
+                                break;
+                            case ("String"):
+                                p.setValueType(Parameter.ValueType.STRING_ARRAY);
+                                break;
+                        }
+//                    p.setValueTypeString("ArrayList<" + valueType + ">");
+                        paramUpdates.add(p);
+                    } else {
+                        String valueType = p.getValue().getClass().getSimpleName();
+                        switch (valueType) {
+                            case ("Integer"):
+                                p.setValueType(Parameter.ValueType.INTEGER);
+                                break;
+                            case ("Double"):
+                                p.setValueType(Parameter.ValueType.DOUBLE);
+                                break;
+                            case ("String"):
+                                p.setValueType(Parameter.ValueType.STRING);
+                        }
+//                    p.setValueTypeString(p.getValue().getClass().getSimpleName());
+                        paramUpdates.add(p);
+                    }
+                }
+            });
+            algo.getParameters().clear();
+            algo.setParameters(paramUpdates);
+        });
+        return algo;
+    }
 }

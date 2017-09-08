@@ -34,7 +34,9 @@
  */
 package org.jaqpot.core.service.resource;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.github.fge.jsonpatch.JsonPatchException;
 import io.swagger.annotations.*;
 import io.swagger.jaxrs.PATCH;
@@ -66,6 +68,7 @@ import javax.ws.rs.core.*;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jaqpot.core.data.serialize.JaqpotSerializationException;
 
 /**
  *
@@ -139,11 +142,13 @@ public class AlgorithmResource {
             notes = "Finds all Algorithms JaqpotQuattro supports"
     )
     @ApiResponses(value = {
-            @ApiResponse(code = 401, response=  ErrorReport.class , message = "Wrong, missing or insufficient credentials. Error report is produced."),
-            @ApiResponse(code = 200,  response = Algorithm.class, responseContainer = "List" , message = "A list of algorithms in the Jaqpot framework"),
+        @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+            @ApiResponse(code = 200, response = Algorithm.class, responseContainer = "List", message = "A list of algorithms in the Jaqpot framework")
+        ,
             @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
 
-})
+    })
     public Response getAlgorithms(
             @ApiParam(value = "Authorization token") @HeaderParam("subjectid") String subjectId,
             @ApiParam(value = "class") @QueryParam("class") String ontologicalClass,
@@ -166,19 +171,22 @@ public class AlgorithmResource {
     @ApiOperation(
             value = "Creates Algorithm",
             notes = "Registers a new JPDI-compliant algorithm service. When registering a new JPDI-compliant algorithm web service "
-                    + "it is crucial to propertly annotate your algorithm with appropriate ontological classes following the "
-                    + "<a href=\"http://opentox.org/dev/apis/api-1.1/Algorithms\">OpenTox algorithms ontology</a>. For instance, a "
-                    + "Clustering algorithm must be annotated with <code>ot:Clustering</code>. It is also important for "
-                    + "discoverability to add tags to your algorithm using the <code>meta.subjects</code> field. An example is "
-                    + "provided below."
+            + "it is crucial to propertly annotate your algorithm with appropriate ontological classes following the "
+            + "<a href=\"http://opentox.org/dev/apis/api-1.1/Algorithms\">OpenTox algorithms ontology</a>. For instance, a "
+            + "Clustering algorithm must be annotated with <code>ot:Clustering</code>. It is also important for "
+            + "discoverability to add tags to your algorithm using the <code>meta.subjects</code> field. An example is "
+            + "provided below."
     )
     @ApiResponses(value = {
-            @ApiResponse(code = 403, response = ErrorReport.class, message="Algorithm quota has been exceeded"),
-            @ApiResponse(code = 401, response = ErrorReport.class , message = "Wrong, missing or insufficient credentials. Error report is produced."),
-            @ApiResponse(code = 200,  response = Algorithm.class, message = "Algorithm successfully registered in the system"),
+        @ApiResponse(code = 403, response = ErrorReport.class, message = "Algorithm quota has been exceeded")
+        ,
+            @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+            @ApiResponse(code = 200, response = Algorithm.class, message = "Algorithm successfully registered in the system")
+        ,
             @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
 
-})
+    })
     public Response createAlgorithm(
             @ApiParam(value = "Algorithm in JSON", defaultValue = DEFAULT_ALGORITHM, required = true) Algorithm algorithm,
             @ApiParam(value = "Authorization token") @HeaderParam("subjectid") String subjectId,
@@ -234,9 +242,12 @@ public class AlgorithmResource {
             notes = "Finds Algorithm with provided name"
     )
     @ApiResponses(value = {
-            @ApiResponse(code = 401, response=  ErrorReport.class , message = "Wrong, missing or insufficient credentials. Error report is produced."),
-            @ApiResponse(code = 404, response = ErrorReport.class , message = "Algorithm was not found"),
-            @ApiResponse(code = 200,  response = Algorithm.class, message = "Algorithm was found in the system"),
+        @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+            @ApiResponse(code = 404, response = ErrorReport.class, message = "Algorithm was not found")
+        ,
+            @ApiResponse(code = 200, response = Algorithm.class, message = "Algorithm was found in the system")
+        ,
             @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
     })
     public Response getAlgorithm(
@@ -253,6 +264,28 @@ public class AlgorithmResource {
         return Response.ok(algorithm).build();
     }
 
+    @GET
+    @Path("/{id}/parametertypes")
+    @Produces({MediaType.APPLICATION_JSON})
+    @ApiOperation(value = "Finds Algorithm with added parameter type description",
+            notes = "Finds Algorithm with provided name and adds the parameter types"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+            @ApiResponse(code = 404, response = ErrorReport.class, message = "Algorithm was not found")
+        ,
+            @ApiResponse(code = 200, response = Algorithm.class, message = "Algorithm was found in the system")
+        ,
+            @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
+    })
+    public Response getAlgoWithParamTyps(@ApiParam(value = "Authorization token")
+            @HeaderParam("subjectid") String subjectId,
+            @PathParam("id") String algorithmId) throws ParameterIsNullException {
+        Algorithm algo = algorithmHandler.findAndAddParameterType(algorithmId);
+        return Response.ok(algo).build();
+    }
+
     @POST
     @Produces({MediaType.APPLICATION_JSON, "text/uri-list"})
     @Path("/{id}")
@@ -260,13 +293,17 @@ public class AlgorithmResource {
             notes = "Applies Dataset and Parameters on Algorithm and creates Model."
     )
     @ApiResponses(value = {
-            @ApiResponse(code = 400, response=  ErrorReport.class , message = "Bad request. More info can be found in details of Error Report."),
-            @ApiResponse(code = 401, response=  ErrorReport.class , message = "Wrong, missing or insufficient credentials. Error report is produced."),
-            @ApiResponse(code = 404, response = ErrorReport.class , message = "Algorithm was not found."),
-            @ApiResponse(code = 200,  response = Task.class, message = "The process has successfully been started. A task URI is returned."),
+        @ApiResponse(code = 400, response = ErrorReport.class, message = "Bad request. More info can be found in details of Error Report.")
+        ,
+            @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+            @ApiResponse(code = 404, response = ErrorReport.class, message = "Algorithm was not found.")
+        ,
+            @ApiResponse(code = 200, response = Task.class, message = "The process has successfully been started. A task URI is returned.")
+        ,
             @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
 
-})
+    })
     @org.jaqpot.core.service.annotations.Task
     public Response trainModel(
             @ApiParam(name = "title", required = true) @FormParam("title") String title,
@@ -278,10 +315,11 @@ public class AlgorithmResource {
             @ApiParam(name = "scaling", defaultValue = STANDARIZATION) @FormParam("scaling") String scaling, //, allowableValues = SCALING + "," + STANDARIZATION
             @ApiParam(name = "doa", defaultValue = DEFAULT_DOA) @FormParam("doa") String doa,
             @PathParam("id") String algorithmId,
-            @HeaderParam("subjectid") String subjectId) throws QuotaExceededException, ParameterIsNullException, ParameterInvalidURIException, ParameterTypeException, ParameterRangeException, ParameterScopeException {
+            @HeaderParam("subjectid") String subjectId) throws QuotaExceededException, ParameterIsNullException, ParameterInvalidURIException, ParameterTypeException, ParameterRangeException, ParameterScopeException, ParameterFormationException {
         UrlValidator urlValidator = new UrlValidator();
 
-        Algorithm algorithm = algorithmHandler.find(algorithmId);
+//        Algorithm algorithm = algorithmHandler.find(algorithmId);
+        Algorithm algorithm = algorithmHandler.findAndAddParameterType(algorithmId);
         if (algorithm == null) {
             throw new NotFoundException("Could not find Algorithm with id:" + algorithmId);
         }
@@ -379,10 +417,13 @@ public class AlgorithmResource {
             + "requires authentication and assumes certain priviledges."
     )
     @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "Algorithm deleted successfully"),
-        @ApiResponse(code = 401, response=  ErrorReport.class,message = "Wrong, missing or insufficient credentials. Error report is produced."),
-        @ApiResponse(code = 403, response=  ErrorReport.class,message = "This is a forbidden operation (do not attempt to repeat it)."),
-        @ApiResponse(code = 500, response=  ErrorReport.class, message = "Internal server error - this request cannot be served.")
+        @ApiResponse(code = 200, message = "Algorithm deleted successfully")
+        ,
+        @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+        @ApiResponse(code = 403, response = ErrorReport.class, message = "This is a forbidden operation (do not attempt to repeat it).")
+        ,
+        @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
     })
     public Response deleteAlgorithm(
             @ApiParam(value = "ID of the algorithm which is to be deleted.", required = true) @PathParam("id") String id,
@@ -419,9 +460,12 @@ public class AlgorithmResource {
             + "See https://tools.ietf.org/rfc/rfc6902.txt for details.",
             position = 5)
     @ApiResponses(value = {
-        @ApiResponse(code = 200, response = Algorithm.class, message = "Algorithm patched successfully"),
-        @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced."),
-        @ApiResponse(code = 403, response = ErrorReport.class, message = "This is a forbidden operation (do not attempt to repeat it)."),
+        @ApiResponse(code = 200, response = Algorithm.class, message = "Algorithm patched successfully")
+        ,
+        @ApiResponse(code = 401, response = ErrorReport.class, message = "Wrong, missing or insufficient credentials. Error report is produced.")
+        ,
+        @ApiResponse(code = 403, response = ErrorReport.class, message = "This is a forbidden operation (do not attempt to repeat it).")
+        ,
         @ApiResponse(code = 500, response = ErrorReport.class, message = "Internal server error - this request cannot be served.")
     })
     public Response modifyAlgorithm(
